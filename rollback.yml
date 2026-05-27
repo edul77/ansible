@@ -1,0 +1,66 @@
+---
+# ============================================================
+# Ansible Playbook: Rollback / Unmount CephFS from CWP nodes
+#
+# Use this if something goes wrong and you need to undo
+# the CephFS mount setup.
+#
+# Usage:
+#   ansible-playbook -i inventory.ini rollback.yml
+# ============================================================
+
+- name: Rollback CephFS mounts from CWP nodes
+  hosts: cwp_nodes
+  become: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Unmount bind mounts
+      mount:
+        path: "{{ item.dest }}"
+        state: unmounted
+      loop: "{{ bind_mounts }}"
+      ignore_errors: yes
+
+    - name: Remove bind mounts from fstab
+      mount:
+        path: "{{ item.dest }}"
+        state: absent
+      loop: "{{ bind_mounts }}"
+      ignore_errors: yes
+
+    - name: Unmount CephFS share
+      mount:
+        path: "{{ ceph_mount_point }}"
+        state: unmounted
+      ignore_errors: yes
+
+    - name: Remove CephFS mount from fstab
+      mount:
+        path: "{{ ceph_mount_point }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove cephx keyring file
+      file:
+        path: "/etc/ceph/ceph.client.{{ ceph_client_name }}.keyring"
+        state: absent
+      ignore_errors: yes
+
+    - name: Restart Apache
+      systemd:
+        name: httpd
+        state: restarted
+      ignore_errors: yes
+
+    - name: Restart CWP PHP-FPM
+      systemd:
+        name: cwp-phpfpm
+        state: restarted
+      ignore_errors: yes
+
+    - name: Rollback complete
+      debug:
+        msg: "CephFS mounts have been removed from {{ inventory_hostname }}"

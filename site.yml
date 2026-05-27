@@ -1,0 +1,256 @@
+---
+# ============================================================
+# Ansible Playbook: Mount OpenStack Manila CephFS share
+#                   on 3 CWP nodes
+#
+# Usage:
+#   1. Update vars.yml with your actual values
+#   2. Update inventory.ini with your CWP node IPs
+#   3. Run: ansible-playbook -i inventory.ini site.yml
+#
+# What this playbook does:
+#   - Installs ceph-common on all CWP nodes
+#   - Creates the cephx keyring file
+#   - Mounts the CephFS share
+#   - Creates the shared directory structure (Node 1 only)
+#   - Syncs existing CWP data to CephFS (Node 1 only)
+#   - Bind mounts CephFS dirs over CWP directories
+#   - Persists all mounts in /etc/fstab
+#   - Restarts Apache and PHP-FPM
+# ============================================================
+
+- name: Mount OpenStack Manila CephFS share on CWP nodes
+  hosts: cwp_nodes
+  become: yes
+  vars_files:
+    - vars.yml
+
+  pre_tasks:
+
+    - name: Verify ceph_access_key is set
+      fail:
+        msg: >
+          ceph_access_key is not set in vars.yml.
+          Copy the access key from OpenStack Horizon
+          (Share -> Access Rules -> Access Key column)
+          and set it in vars.yml before running this playbook.
+      when: ceph_access_key == "AQBxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=="
+
+    - name: Verify ceph_monitors is set
+      fail:
+        msg: >
+          ceph_monitors is not set in vars.yml.
+          Copy the monitor IPs from the Manila share export
+          location in OpenStack Horizon and update vars.yml.
+      when: '"172.31.x.x" in ceph_monitors'
+
+    - name: Verify ceph_share_path is set
+      fail:
+        msg: >
+          ceph_share_path is not set in vars.yml.
+          Copy the share path from the Manila export location
+          in OpenStack Horizon and update vars.yml.
+      when: '"xxxx" in ceph_share_path'
+
+  tasks:
+
+    # ----------------------------------------------------------
+    # 1. Install CephFS client
+    # ----------------------------------------------------------
+    - name: Install centos-release-ceph-nautilus repo
+      yum:
+        name: centos-release-ceph-nautilus
+        state: present
+
+    - name: Install ceph-common package
+      yum:
+        name: ceph-common
+        state: present
+
+    - name: Verify ceph-common installed
+      command: ceph --version
+      register: ceph_version
+      changed_when: false
+
+    - name: Print ceph version
+      debug:
+        msg: "Ceph client version: {{ ceph_version.stdout }}"
+
+    # ----------------------------------------------------------
+    # 2. Create cephx keyring
+    # ----------------------------------------------------------
+    - name: Create /etc/ceph directory
+      file:
+        path: /etc/ceph
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Create cephx keyring file
+      copy:
+        dest: "/etc/ceph/ceph.client.{{ ceph_client_name }}.keyring"
+        content: |
+          [client.{{ ceph_client_name }}]
+                  key = {{ ceph_access_key }}
+        mode: '0600'
+        owner: root
+        group: root
+
+    # ----------------------------------------------------------
+    # 3. Create CephFS mount point
+    # ----------------------------------------------------------
+    - name: Create CephFS mount point
+      file:
+        path: "{{ ceph_mount_point }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    # ----------------------------------------------------------
+    # 4. Mount CephFS share
+    # ----------------------------------------------------------
+    - name: Mount CephFS share
+      mount:
+        path: "{{ ceph_mount_point }}"
+        src: "{{ ceph_export_path }}"
+        fstype: ceph
+        opts: "name={{ ceph_client_name }},keyring=/etc/ceph/ceph.client.{{ ceph_client_name }}.keyring,_netdev,noatime"
+        state: mounted
+
+    - name: Verify CephFS is mounted
+      command: df -h {{ ceph_mount_point }}
+      register: ceph_mount_check
+      changed_when: false
+
+    - name: Print mount status
+      debug:
+        msg: "{{ ceph_mount_check.stdout }}"
+
+    # ----------------------------------------------------------
+    # 5. Create shared directory structure on CephFS (Node 1 only)
+    # ----------------------------------------------------------
+    - name: Create shared directory structure on CephFS
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      loop: "{{ ceph_share_dirs }}"
+      when: inventory_hostname == groups['cwp_nodes'][0]
+
+    # ----------------------------------------------------------
+    # 6. Sync existing CWP data to CephFS (Node 1 only)
+    # ----------------------------------------------------------
+    - name: Install rsync
+      yum:
+        name: rsync
+        state: present
+      when: inventory_hostname == groups['cwp_nodes'][0]
+
+    - name: Sync existing CWP directories to CephFS
+      synchronize:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        archive: yes
+        delete: no
+      loop: "{{ sync_dirs }}"
+      when: inventory_hostname == groups['cwp_nodes'][0]
+      ignore_errors: yes
+
+    # ----------------------------------------------------------
+    # 7. Create bind mount target directories
+    # ----------------------------------------------------------
+    - name: Create bind mount target directories
+      file:
+        path: "{{ item.dest }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      loop: "{{ bind_mounts }}"
+
+    # ----------------------------------------------------------
+    # 8. Configure bind mounts in fstab and mount
+    # ----------------------------------------------------------
+    - name: Configure bind mounts in fstab
+      mount:
+        path: "{{ item.dest }}"
+        src: "{{ item.src }}"
+        fstype: none
+        opts: "bind,_netdev"
+        state: mounted
+      loop: "{{ bind_mounts }}"
+
+    # ----------------------------------------------------------
+    # 9. Verify all bind mounts are active
+    # ----------------------------------------------------------
+    - name: Verify all mounts are active
+      command: df -h
+      register: df_output
+      changed_when: false
+
+    - name: Check each bind mount is present
+      assert:
+        that:
+          - "item.dest in df_output.stdout"
+        fail_msg: "Bind mount {{ item.dest }} is NOT mounted"
+        success_msg: "Bind mount {{ item.dest }} is mounted correctly"
+      loop: "{{ bind_mounts }}"
+
+    # ----------------------------------------------------------
+    # 10. Test shared filesystem across nodes
+    # ----------------------------------------------------------
+    - name: Create test file on CephFS (Node 1 only)
+      file:
+        path: "/home/cephfs_cluster_test"
+        state: touch
+        mode: '0644'
+      when: inventory_hostname == groups['cwp_nodes'][0]
+
+    - name: Verify test file is visible on all nodes
+      stat:
+        path: "/home/cephfs_cluster_test"
+      register: test_file
+
+    - name: Assert test file is visible
+      assert:
+        that:
+          - test_file.stat.exists
+        fail_msg: "CephFS test file NOT visible on {{ inventory_hostname }} — shared filesystem may not be working"
+        success_msg: "CephFS test file visible on {{ inventory_hostname }} — shared filesystem is working"
+
+    - name: Remove test file (Node 1 only)
+      file:
+        path: "/home/cephfs_cluster_test"
+        state: absent
+      when: inventory_hostname == groups['cwp_nodes'][0]
+
+    # ----------------------------------------------------------
+    # 11. Restart Apache and PHP-FPM
+    # ----------------------------------------------------------
+    - name: Restart Apache
+      systemd:
+        name: httpd
+        state: restarted
+      ignore_errors: yes
+
+    - name: Restart CWP PHP-FPM
+      systemd:
+        name: cwp-phpfpm
+        state: restarted
+      ignore_errors: yes
+
+    # ----------------------------------------------------------
+    # 12. Final summary
+    # ----------------------------------------------------------
+    - name: Print final mount summary
+      command: df -h | grep -E "psfs|Filesystem"
+      register: final_mounts
+      changed_when: false
+
+    - name: Show mount summary
+      debug:
+        msg: "{{ final_mounts.stdout_lines }}"
