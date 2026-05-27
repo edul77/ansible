@@ -20,7 +20,7 @@
     # Target user whose authorized_keys will be updated
     # Override with: -e "target_user=deploy"
     # -----------------------------------------------------------------------
-    target_user: ubuntu
+    target_user: edul
 
     # -----------------------------------------------------------------------
     # List of SSH public keys to add.
@@ -31,7 +31,7 @@
     # -----------------------------------------------------------------------
     ssh_keys:
       - comment: "Admin key (from local file)"
-        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        key: "{{ lookup('file', '~/.ssh/edul') }}"
         state: present
 
       # Example: inline key
@@ -49,9 +49,9 @@
     # -----------------------------------------------------------------------
     harden_sshd: false
     sshd_settings:
-      PasswordAuthentication: "no"
+      PasswordAuthentication: "yes"
       PermitRootLogin: "no"
-      PubkeyAuthentication: "yes"
+      PubkeyAuthentication: "no"
       AuthorizedKeysFile: ".ssh/authorized_keys"
 
   # =========================================================================
