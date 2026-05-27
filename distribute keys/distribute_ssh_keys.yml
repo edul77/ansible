@@ -31,7 +31,7 @@
     # -----------------------------------------------------------------------
     ssh_keys:
       - comment: "Admin key (from local file)"
-        key: "{{ lookup('file', '/mnt/c/Users/UITS/.ssh/id_rsa.pub') }}"
+        key: "{{ lookup('file', 'home/edul/.ssh/id_rsa.pub ') }}"
         state: present
 
       # Example: inline key

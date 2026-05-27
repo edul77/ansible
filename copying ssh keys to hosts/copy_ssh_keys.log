@@ -1,0 +1,33 @@
+2026-05-27 18:59:59  [0;36m[INFO][0m    Using public key: /home/edul/.ssh/id_rsa.pub
+2026-05-27 18:59:59  [0;36m[INFO][0m    Reading hosts from hosts.txt
+2026-05-27 18:59:59  [0;36m[INFO][0m    Hosts to process: 3
+2026-05-27 18:59:59  [0;36m[INFO][0m    Copying key to ubuntu@10.200.8.101:22 ...
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/edul/.ssh/id_rsa.pub"
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+Permission denied, please try again.
+Permission denied, please try again.
+ubuntu@10.200.8.101: Permission denied (publickey,password).
+2026-05-27 19:00:45  [0;31m[ERROR][0m   Failed to copy key → 10.200.8.101
+2026-05-27 19:00:52  [0;36m[INFO][0m    Using public key: /home/edul/.ssh/id_rsa.pub
+2026-05-27 19:00:52  [0;36m[INFO][0m    Reading hosts from hosts.txt
+2026-05-27 19:00:52  [0;36m[INFO][0m    Hosts to process: 3
+2026-05-27 19:00:52  [0;36m[INFO][0m    Copying key to ubuntu@10.200.8.101:22 ...
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/edul/.ssh/id_rsa.pub"
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+Permission denied, please try again.
+2026-05-27 19:01:14  [0;32m[OK][0m      Key copied → 10.200.8.101
+2026-05-27 19:01:15  [0;32m[OK][0m      Login verified  → 10.200.8.101
+2026-05-27 19:01:15  [0;36m[INFO][0m    Copying key to ubuntu@10.200.9.165:22 ...
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/edul/.ssh/id_rsa.pub"
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+2026-05-27 19:01:26  [0;32m[OK][0m      Key copied → 10.200.9.165
+2026-05-27 19:01:27  [0;32m[OK][0m      Login verified  → 10.200.9.165
+2026-05-27 19:01:27  [0;36m[INFO][0m    Copying key to ubuntu@10.200.11.224:22 ...
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/home/edul/.ssh/id_rsa.pub"
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+2026-05-27 19:01:35  [0;32m[OK][0m      Key copied → 10.200.11.224
+2026-05-27 19:01:36  [0;32m[OK][0m      Login verified  → 10.200.11.224

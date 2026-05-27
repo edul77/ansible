@@ -1,0 +1,11 @@
+# hosts.txt — one IP or hostname per line
+# Lines starting with # are ignored
+
+# Web servers
+10.200.8.101
+10.200.9.165
+10.200.11.224
+
+# Example with hostnames
+# web01.example.com
+# web02.example.com
