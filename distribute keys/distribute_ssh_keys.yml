@@ -31,7 +31,7 @@
     # -----------------------------------------------------------------------
     ssh_keys:
       - comment: "Admin key (from local file)"
-        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        key: "{{ lookup('file', '/mnt/c/Users/UITS/.ssh/id_rsa.pub') }}"
         state: present
 
       # Example: inline key
@@ -118,7 +118,7 @@
         user: "{{ target_user }}"
         key: "{{ item.key }}"
         state: "{{ item.state | default('present') }}"
-        exclusive: false       # Set to true to REPLACE all keys (dangerous!)
+        exclusive: false       
       loop: "{{ ssh_keys }}"
       loop_control:
         label: "{{ item.comment | default(item.key[:40] + '...') }}"
